@@ -2,6 +2,7 @@
 <html>
 <head>
     <script src='https://statics.teams.microsoft.com/sdk/v1.0/js/MicrosoftTeams.min.js'></script>
+    <script src="https://secure.aadcdn.microsoftonline-p.com/lib/1.0.13/js/adal.min.js"></script>
     <script src='https://code.jquery.com/jquery-1.11.3.min.js'></script>
     <script>
         var microsoftTeams;
@@ -9,22 +10,85 @@
         // Set up the tab and stuff.
         microsoftTeams.initialize();
 
+        isAuth = false;
+
+        // Setup auth parameters for ADAL
+        window.config = {
+            instance: "https://login.microsoftonline.com/",
+            tenant: "common",
+            clientId: "97047257-0971-4b05-a0f1-8174da0083f0",
+            postLogoutRedirectUri: window.location.origin,
+            cacheLocation: "localStorage",
+            endpoints: {
+                "https://graph.microsoft.com": "https://graph.microsoft.com"
+            }
+        };
+
         microsoftTeams.settings.registerOnSaveHandler(function (saveEvent) {
-            microsoftTeams.settings.setSettings({ suggestedDisplayName: "Bot Info", contentUrl: createTabUrl(), entityId: "configTab" });
+
+            var radios = document.getElementsByName("boardtype");
+            if (radios[0].checked) {
+                microsoftTeams.settings.setSettings({ suggestedDisplayName: "Team Leaderboard", contentUrl: createTabUrl(), entityId: "team" });
+            }
+            else {
+                microsoftTeams.settings.setSettings({ suggestedDisplayName: "Personal Leaderboard", contentUrl: createTabUrl(), entityId: "personal" });
+            }
+
             saveEvent.notifySuccess();
         });
 
-        microsoftTeams.settings.setValidityState(true);
+        //microsoftTeams.settings.setValidityState(true);
 
         function createTabUrl() {
             //Set the url of tab.aspx for pinned tab
-            var tabUrl = window.location.protocol + "//" + window.location.host + "/public/tab/tabConfig/tab.aspx";
+
+            var myToken = "";
+            var authContext = new AuthenticationContext(window.config);
+
+            authContext.acquireToken("https://graph.microsoft.com", function (error, token) {
+                if (error || !token) {
+                    // TODO: this could cause infinite loop
+                    // Should use microsoftTeams.authentication.notifyFailure after one try
+                    isAuth = false;
+                }
+                else
+                    myToken = token;
+            });
+          
+            var tabUrl = window.location.protocol + "//" + window.location.host + "/public/tab/tabConfig/tab.aspx?teamId={teamId}&channelId={channelId}&locale={locale}&theme={theme}&entityId={entityId}&subEntityId={subEntityId}&upn={upn}&tid={tid}&groupId={groupId}&token=" + myToken;
             return tabUrl;
+        }
+
+        function onClick() {
+            if (isAuth)
+                microsoftTeams.settings.setValidityState(true);
+        }
+
+        function onAuth() {
+
+            microsoftTeams.authentication.authenticate({
+                url: window.location.origin + "/public/tab/tabAuth/index.html",
+                width: 600,
+                height: 535,
+                successCallback: function (result) {
+                    isAuth = true;
+                    var authButton = document.getElementsByName("auth");
+                    authButton[0].hidden = true;
+                },
+                failureCallback: function (reason) {
+                    isAuth = false;
+                }
+            });
         }
 
     </script>
 </head>
 <body>
-    <h1>Press save to create your tab</h1> 
-</body>   
+<b>Please select type of the Leaderboard</b>
+<form>
+    <input type="radio" name="boardtype" value="team" onclick="onClick()"> Team<br>
+    <input type="radio" name="boardtype" value="person" onclick="onClick()"> Individual<br><br>
+    <input type="button" name="auth" onclick="onAuth()" value="Sign In"/>
+</form>
+</body>
 </html>
