@@ -27,6 +27,7 @@ namespace Microsoft.Teams.TemplateBotCSharp.src.tab
 
         protected void Page_Load(object sender, EventArgs e)
         {
+
             if (triviaApi == null)
                 triviaApi = new IO.Swagger.Api.TriviaApi();
 
@@ -49,6 +50,7 @@ namespace Microsoft.Teams.TemplateBotCSharp.src.tab
                             return Task.FromResult(0);
 
                         }));
+                    
                 }
             }
 
@@ -140,7 +142,7 @@ namespace Microsoft.Teams.TemplateBotCSharp.src.tab
                                         pictures.Add(result.Id.GetValueOrDefault(), picture);
                                     }
                                 }
-                                catch
+                                catch(Exception except)
                                 {
                                     picture = String.Empty;
                                 }
